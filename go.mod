@@ -1,4 +1,4 @@
-module github.com/gen2brain/avif
+module github.com/ayla6/avif
 
 go 1.23
 

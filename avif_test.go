@@ -258,7 +258,7 @@ func TestEncodeDynamic(t *testing.T) {
 	}
 	defer w.Close()
 
-	err = encodeDynamic(w, img, DefaultQuality, DefaultQuality, DefaultSpeed, image.YCbCrSubsampleRatio420)
+	err = encodeDynamic(w, img, DefaultQuality, DefaultQuality, DefaultSpeed, image.YCbCrSubsampleRatio420, map[string]string{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,7 +361,7 @@ func BenchmarkEncodeDynamic(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		err := encodeDynamic(io.Discard, img, DefaultQuality, DefaultQuality, DefaultSpeed, image.YCbCrSubsampleRatio420)
+		err := encodeDynamic(io.Discard, img, DefaultQuality, DefaultQuality, DefaultSpeed, image.YCbCrSubsampleRatio420, map[string]string{})
 		if err != nil {
 			b.Error(err)
 		}

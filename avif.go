@@ -40,6 +40,10 @@ type Options struct {
 	Speed int
 	// Chroma subsampling, 444|422|420.
 	ChromaSubsampling image.YCbCrSubsampleRatio
+	// Advanced passes codec-specific key/value options to the encoder,
+	// e.g. {"tune": "iq", "enable-dnl-denoising": "0"}.
+	// These map directly to libavif's avifEncoderSetCodecSpecificOption.
+	Advanced map[string]string
 }
 
 // Decode reads a AVIF image from r and returns it as an image.Image.
@@ -108,6 +112,7 @@ func Encode(w io.Writer, m image.Image, o ...Options) error {
 	qualityAlpha := DefaultQuality
 	speed := DefaultSpeed
 	chroma := image.YCbCrSubsampleRatio420
+	var advanced map[string]string
 
 	if o != nil {
 		opt := o[0]
@@ -115,6 +120,7 @@ func Encode(w io.Writer, m image.Image, o ...Options) error {
 		qualityAlpha = opt.QualityAlpha
 		speed = opt.Speed
 		chroma = opt.ChromaSubsampling
+		advanced = opt.Advanced
 
 		if quality <= 0 {
 			quality = DefaultQuality
@@ -136,7 +142,7 @@ func Encode(w io.Writer, m image.Image, o ...Options) error {
 	}
 
 	if dynamic {
-		err := encodeDynamic(w, m, quality, qualityAlpha, speed, chroma)
+		err := encodeDynamic(w, m, quality, qualityAlpha, speed, chroma, advanced)
 		if err != nil {
 			return err
 		}

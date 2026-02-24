@@ -121,7 +121,8 @@ func decodeDynamic(r io.Reader, configOnly, decodeAll bool) (*AVIF, image.Config
 	return av, cfg, nil
 }
 
-func encodeDynamic(w io.Writer, m image.Image, quality, qualityAlpha, speed int, subsampleRatio image.YCbCrSubsampleRatio) error {
+func encodeDynamic(w io.Writer, m image.Image, quality, qualityAlpha, speed int,
+	subsampleRatio image.YCbCrSubsampleRatio, advanced map[string]string) error {
 	i := imageToRGBA(m)
 
 	var chroma int
@@ -166,6 +167,12 @@ func encodeDynamic(w io.Writer, m image.Image, quality, qualityAlpha, speed int,
 	encoder.Quality = int32(quality)
 	encoder.QualityAlpha = int32(qualityAlpha)
 	encoder.Speed = int32(speed)
+
+	for k, v := range advanced {
+		if !avifEncoderSetCodecSpecificOption(encoder, k, v) {
+			return fmt.Errorf("%w: codec option %q=%q rejected", ErrEncode, k, v)
+		}
+	}
 
 	if !avifEncoderAddImage(encoder, img, 1, avifAddImageFlagSingle) {
 		return ErrEncode
@@ -219,6 +226,7 @@ func init() {
 	purego.RegisterLibFunc(&_avifEncoderAddImage, libavif, "avifEncoderAddImage")
 	purego.RegisterLibFunc(&_avifEncoderFinish, libavif, "avifEncoderFinish")
 	purego.RegisterLibFunc(&_avifRWDataFree, libavif, "avifRWDataFree")
+	purego.RegisterLibFunc(&_avifEncoderSetCodecSpecificOption, libavif, "avifEncoderSetCodecSpecificOption")
 
 	major, minor := avifVersion()
 	if major != 1 || minor < 1 {
@@ -234,24 +242,25 @@ var (
 )
 
 var (
-	_avifVersion                func() string
-	_avifDecoderCreate          func() *avifDecoder
-	_avifDecoderDestroy         func(*avifDecoder)
-	_avifDecoderSetIOMemory     func(*avifDecoder, []byte, uint64) int
-	_avifDecoderParse           func(*avifDecoder) int
-	_avifDecoderNextImage       func(*avifDecoder) int
-	_avifRGBImageSetDefaults    func(*avifRGBImage, *avifImage)
-	_avifRGBImageAllocatePixels func(*avifRGBImage) int
-	_avifRGBImageFreePixels     func(*avifRGBImage)
-	_avifImageYUVToRGB          func(*avifImage, *avifRGBImage) int
-	_avifImageRGBToYUV          func(*avifImage, *avifRGBImage) int
-	_avifImageCreate            func(int, int, int, int) *avifImage
-	_avifImageDestroy           func(*avifImage)
-	_avifEncoderCreate          func() *avifEncoder
-	_avifEncoderDestroy         func(*avifEncoder)
-	_avifEncoderAddImage        func(*avifEncoder, *avifImage, uint64, int) int
-	_avifEncoderFinish          func(*avifEncoder, *avifRWData) int
-	_avifRWDataFree             func(*avifRWData)
+	_avifVersion                       func() string
+	_avifDecoderCreate                 func() *avifDecoder
+	_avifDecoderDestroy                func(*avifDecoder)
+	_avifDecoderSetIOMemory            func(*avifDecoder, []byte, uint64) int
+	_avifDecoderParse                  func(*avifDecoder) int
+	_avifDecoderNextImage              func(*avifDecoder) int
+	_avifRGBImageSetDefaults           func(*avifRGBImage, *avifImage)
+	_avifRGBImageAllocatePixels        func(*avifRGBImage) int
+	_avifRGBImageFreePixels            func(*avifRGBImage)
+	_avifImageYUVToRGB                 func(*avifImage, *avifRGBImage) int
+	_avifImageRGBToYUV                 func(*avifImage, *avifRGBImage) int
+	_avifImageCreate                   func(int, int, int, int) *avifImage
+	_avifImageDestroy                  func(*avifImage)
+	_avifEncoderCreate                 func() *avifEncoder
+	_avifEncoderDestroy                func(*avifEncoder)
+	_avifEncoderAddImage               func(*avifEncoder, *avifImage, uint64, int) int
+	_avifEncoderFinish                 func(*avifEncoder, *avifRWData) int
+	_avifRWDataFree                    func(*avifRWData)
+	_avifEncoderSetCodecSpecificOption func(*avifEncoder, string, string) int // ← add
 )
 
 func avifVersion() (int, int) {
@@ -337,6 +346,10 @@ func avifEncoderFinish(encoder *avifEncoder, output *avifRWData) bool {
 
 func avifRWDataFree(output *avifRWData) {
 	_avifRWDataFree(output)
+}
+
+func avifEncoderSetCodecSpecificOption(encoder *avifEncoder, key, value string) bool {
+	return _avifEncoderSetCodecSpecificOption(encoder, key, value) == 0
 }
 
 func toStr(diagnostics avifDiagnostics) string {
